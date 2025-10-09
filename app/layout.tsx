@@ -7,6 +7,7 @@ import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
 import { WalletProvider } from "@/components/wallet-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
   title: "Pushbridge",
@@ -36,6 +37,7 @@ export default function RootLayout({
               <Header />
               <Suspense>{children}</Suspense>
             </div>
+            <Toaster />
           </WalletProvider>
         </ThemeProvider>
       </body>
