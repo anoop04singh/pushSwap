@@ -6,6 +6,7 @@ import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
+import { WalletProvider } from "@/components/wallet-provider"
 
 export const metadata: Metadata = {
   title: "Pushbridge",
@@ -30,10 +31,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex min-h-screen w-full flex-col">
-            <Header />
-            <Suspense>{children}</Suspense>
-          </div>
+          <WalletProvider>
+            <div className="flex min-h-screen w-full flex-col">
+              <Header />
+              <Suspense>{children}</Suspense>
+            </div>
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>
