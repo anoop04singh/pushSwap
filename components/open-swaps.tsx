@@ -80,7 +80,7 @@ export function OpenSwaps() {
       }
       setIsLoading(true)
       try {
-        const swapIds = await pushChainClient.public.readContract({
+        const swapIds = await pushChainClient.readContract({
           address: HTLCSWAP_CONTRACT_ADDRESS,
           abi: HTLCSWAP_ABI,
           functionName: "getOpenSwaps",
@@ -92,7 +92,7 @@ export function OpenSwaps() {
         }
 
         const swapDetailsPromises = swapIds.map(async (id) => {
-          const swapData = await pushChainClient.public.readContract({
+          const swapData = await pushChainClient.readContract({
             address: HTLCSWAP_CONTRACT_ADDRESS,
             abi: HTLCSWAP_ABI,
             functionName: "swaps",
