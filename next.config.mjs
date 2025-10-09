@@ -9,7 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  webpack: (config) => {
+  webpack: (config, { webpack }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -19,7 +19,7 @@ const nextConfig = {
     config.externals.push("pino-pretty", "lokijs", "encoding")
 
     config.plugins.push(
-      new (require('webpack').ProvidePlugin)({
+      new webpack.ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
       })
     )
