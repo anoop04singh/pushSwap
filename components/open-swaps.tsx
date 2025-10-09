@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { usePushChainClient } from "@pushchain/ui-kit"
+import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
+import { ethers } from "ethers"
 import { formatUnits } from "viem"
 import { toast } from "sonner"
 
@@ -69,22 +70,26 @@ interface SwapDetails {
 }
 
 export function OpenSwaps() {
-  const { pushChainClient, isInitialized } = usePushChainClient()
+  const { isInitialized } = usePushChainClient()
   const [swaps, setSwaps] = useState<SwapDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function fetchOpenSwaps() {
-      if (!isInitialized || !pushChainClient) {
+      if (!isInitialized) {
         return
       }
       setIsLoading(true)
       try {
-        const swapIds = await pushChainClient.readContract({
-          address: HTLCSWAP_CONTRACT_ADDRESS,
-          abi: HTLCSWAP_ABI,
-          functionName: "getOpenSwaps",
-        })
+        const PUSH_RPC_URL = PushUI.CONSTANTS.PUSH_NETWORK.TESTNET.RPC
+        const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
+        const htlcContract = new ethers.Contract(
+          HTLCSWAP_CONTRACT_ADDRESS,
+          HTLCSWAP_ABI,
+          pushProvider
+        )
+
+        const swapIds: string[] = await htlcContract.getOpenSwaps()
 
         if (!swapIds || swapIds.length === 0) {
           setSwaps([])
@@ -92,17 +97,12 @@ export function OpenSwaps() {
         }
 
         const swapDetailsPromises = swapIds.map(async (id) => {
-          const swapData = await pushChainClient.readContract({
-            address: HTLCSWAP_CONTRACT_ADDRESS,
-            abi: HTLCSWAP_ABI,
-            functionName: "swaps",
-            args: [id],
-          })
+          const swapData = await htlcContract.swaps(id)
           return {
             id,
-            usdtToken: swapData[2],
-            usdtAmount: swapData[3],
-            pcAmount: swapData[4],
+            usdtToken: swapData.usdtToken,
+            usdtAmount: swapData.usdtAmount,
+            pcAmount: swapData.pcAmount,
           }
         })
 
@@ -118,7 +118,7 @@ export function OpenSwaps() {
     }
 
     fetchOpenSwaps()
-  }, [isInitialized, pushChainClient])
+  }, [isInitialized])
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, index) => (
@@ -174,7 +174,9 @@ export function OpenSwaps() {
           <TableBody>
             {isLoading
               ? renderSkeleton()
+              // @ts-ignore
               : swaps.length > 0
+              // @ts-ignore
               ? swaps.map((swap) => {
                   const tokenInfo =
                     TOKENS_BY_ADDRESS[swap.usdtToken.toLowerCase()] || {
