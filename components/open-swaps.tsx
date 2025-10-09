@@ -34,38 +34,49 @@ const TOKENS_BY_ADDRESS: Record<string, { symbol: string; decimals: number }> = 
   },
 }
 
-const HTLCSWAP_ABI = [
-  {
-    inputs: [],
-    name: "getOpenSwaps",
-    outputs: [{ internalType: "bytes32[]", name: "", type: "bytes32[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
-    name: "swaps",
-    outputs: [
-      { internalType: "address", name: "initiator", type: "address" },
-      { internalType: "address", name: "participant", type: "address" },
-      { internalType: "address", name: "usdtToken", type: "address" },
-      { internalType: "uint256", name: "usdtAmount", type: "uint256" },
-      { internalType: "uint256", name: "pcAmount", type: "uint256" },
-      { internalType: "bytes32", name: "hashA", type: "bytes32" },
-      { internalType: "bytes32", name: "secretA", type: "bytes32" },
-      { internalType: "bytes32", name: "secretB", type: "bytes32" },
-      { internalType: "uint256", name: "timelock", type: "uint256" },
-      { internalType: "uint8", name: "state", type: "uint8" },
+const HTLCSWAP_ABI = [{
+  "inputs": [],
+  "name": "getOpenSwaps",
+  "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{"internalType": "bytes32", "name": "_swapId", "type": "bytes32"}],
+  "name": "getSwap",
+  "outputs": [{
+    "components": [
+      {"internalType": "address", "name": "userA", "type": "address"},
+      {"internalType": "address", "name": "userB", "type": "address"},
+      {"internalType": "uint256", "name": "ercAmount", "type": "uint256"},
+      {"internalType": "uint256", "name": "pcAmount", "type": "uint256"},
+      {"internalType": "bytes32", "name": "hashA", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "hashB", "type": "bytes32"},
+      {"internalType": "uint256", "name": "timelock", "type": "uint256"},
+      {"internalType": "uint8", "name": "state", "type": "uint8"},
+      {"internalType": "address", "name": "ercToken", "type": "address"}
     ],
-    stateMutability: "view",
-    type: "function",
-  },
-]
+    "internalType": "struct HTLCSwapPushChainV2.Swap",
+    "name": "",
+    "type": "tuple"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [
+    {"internalType": "bytes32", "name": "_swapId", "type": "bytes32"},
+    {"internalType": "bytes32", "name": "_hashB", "type": "bytes32"},
+    {"internalType": "bytes32", "name": "_secretB", "type": "bytes32"}
+  ],
+  "name": "participateSwap",
+  "outputs": [],
+  "stateMutability": "payable",
+  "type": "function"
+}]
 
 interface SwapDetails {
   id: string
-  usdtToken: `0x${string}`
-  usdtAmount: bigint
+  ercToken: `0x${string}`
+  ercAmount: bigint
   pcAmount: bigint
 }
 
@@ -81,7 +92,7 @@ export function OpenSwaps() {
       }
       setIsLoading(true)
       try {
-        const PUSH_RPC_URL = PushUI.CONSTANTS.PUSH_NETWORK.TESTNET.RPC
+        const PUSH_RPC_URL = 'https://evm.rpc-testnet-donut-node1.push.org/'
         const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
         const htlcContract = new ethers.Contract(
           HTLCSWAP_CONTRACT_ADDRESS,
@@ -97,11 +108,11 @@ export function OpenSwaps() {
         }
 
         const swapDetailsPromises = swapIds.map(async (id) => {
-          const swapData = await htlcContract.swaps(id)
+          const swapData = await htlcContract.getSwap(id)
           return {
             id,
-            usdtToken: swapData.usdtToken,
-            usdtAmount: swapData.usdtAmount,
+            ercToken: swapData.ercToken,
+            ercAmount: swapData.ercAmount,
             pcAmount: swapData.pcAmount,
           }
         })
@@ -179,12 +190,12 @@ export function OpenSwaps() {
               // @ts-ignore
               ? swaps.map((swap) => {
                   const tokenInfo =
-                    TOKENS_BY_ADDRESS[swap.usdtToken.toLowerCase()] || {
+                    TOKENS_BY_ADDRESS[swap.ercToken.toLowerCase()] || {
                       symbol: "UNKNOWN",
                       decimals: 18,
                     }
                   const formattedUsdtAmount = formatUnits(
-                    swap.usdtAmount,
+                    swap.ercAmount,
                     tokenInfo.decimals
                   )
                   const formattedPcAmount = formatUnits(swap.pcAmount, 18)
