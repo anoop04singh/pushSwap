@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
 import { ethers } from "ethers"
-import { formatUnits } from "viem"
+import { formatUnits, encodeFunctionData } from "viem"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 import {
   Card,
@@ -75,61 +76,115 @@ const HTLCSWAP_ABI = [{
 
 interface SwapDetails {
   id: string
+  userA: `0x${string}`
   ercToken: `0x${string}`
   ercAmount: bigint
   pcAmount: bigint
 }
 
 export function OpenSwaps() {
-  const { isInitialized } = usePushChainClient()
+  const { pushChainClient, isInitialized } = usePushChainClient()
   const [swaps, setSwaps] = useState<SwapDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [participatingSwapId, setParticipatingSwapId] = useState<string | null>(null)
+  const [userAddress, setUserAddress] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchOpenSwaps() {
-      if (!isInitialized) {
+  const fetchOpenSwaps = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const PUSH_RPC_URL = PushUI.CONSTANTS.PUSH_NETWORK.TESTNET.RPC
+      const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
+      const htlcContract = new ethers.Contract(
+        HTLCSWAP_CONTRACT_ADDRESS,
+        HTLCSWAP_ABI,
+        pushProvider
+      )
+
+      const swapIds: string[] = await htlcContract.getOpenSwaps()
+
+      if (!swapIds || swapIds.length === 0) {
+        setSwaps([])
         return
       }
-      setIsLoading(true)
-      try {
-        const PUSH_RPC_URL = 'https://evm.rpc-testnet-donut-node1.push.org/'
-        const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
-        const htlcContract = new ethers.Contract(
-          HTLCSWAP_CONTRACT_ADDRESS,
-          HTLCSWAP_ABI,
-          pushProvider
-        )
 
-        const swapIds: string[] = await htlcContract.getOpenSwaps()
-
-        if (!swapIds || swapIds.length === 0) {
-          setSwaps([])
-          return
+      const swapDetailsPromises = swapIds.map(async (id) => {
+        const swapData = await htlcContract.getSwap(id)
+        return {
+          id,
+          userA: swapData.userA,
+          ercToken: swapData.ercToken,
+          ercAmount: swapData.ercAmount,
+          pcAmount: swapData.pcAmount,
         }
+      })
 
-        const swapDetailsPromises = swapIds.map(async (id) => {
-          const swapData = await htlcContract.getSwap(id)
-          return {
-            id,
-            ercToken: swapData.ercToken,
-            ercAmount: swapData.ercAmount,
-            pcAmount: swapData.pcAmount,
-          }
-        })
+      const resolvedSwaps = await Promise.all(swapDetailsPromises)
+      setSwaps(resolvedSwaps)
+    } catch (error) {
+      console.error("Failed to fetch open swaps:", error)
+      toast.error("Could not fetch open swaps.")
+      setSwaps([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-        const resolvedSwaps = await Promise.all(swapDetailsPromises)
-        setSwaps(resolvedSwaps)
-      } catch (error) {
-        console.error("Failed to fetch open swaps:", error)
-        toast.error("Could not fetch open swaps.")
-        setSwaps([])
-      } finally {
-        setIsLoading(false)
+  useEffect(() => {
+    async function init() {
+      if (isInitialized && pushChainClient) {
+        const address = await pushChainClient.universal.account
+        setUserAddress(address)
+        fetchOpenSwaps()
       }
     }
+    init()
+  }, [isInitialized, pushChainClient, fetchOpenSwaps])
 
-    fetchOpenSwaps()
-  }, [isInitialized])
+  const handleParticipateSwap = async (swap: SwapDetails) => {
+    if (!isInitialized || !pushChainClient) {
+      toast.error("Wallet not connected or client not initialized.")
+      return
+    }
+
+    setParticipatingSwapId(swap.id)
+    const toastId = toast.loading("Preparing to participate...")
+
+    try {
+      const rawSecretB = ethers.randomBytes(32)
+      const secretB = ethers.hexlify(rawSecretB)
+      const hashB = ethers.keccak256(rawSecretB)
+      toast.loading("Generated secrets. Sending transaction...", { id: toastId })
+
+      const participateTx = await pushChainClient.universal.sendTransaction({
+        to: HTLCSWAP_CONTRACT_ADDRESS,
+        value: swap.pcAmount,
+        data: encodeFunctionData({
+          abi: HTLCSWAP_ABI,
+          functionName: "participateSwap",
+          args: [swap.id, hashB, secretB],
+        }),
+      })
+
+      const receipt = await participateTx.wait()
+      toast.success("Successfully participated in swap!", {
+        id: toastId,
+        description: `Tx: ${receipt.hash.slice(0, 10)}... IMPORTANT: Save your secret! Secret B: ${secretB.slice(0, 10)}...`,
+        action: {
+          label: "View on Explorer",
+          onClick: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank"),
+        },
+      })
+      fetchOpenSwaps() // Refresh the list
+    } catch (error: any) {
+      console.error("Participation failed:", error)
+      toast.error("Participation failed", {
+        id: toastId,
+        description: error.shortMessage || error.message,
+      })
+    } finally {
+      setParticipatingSwapId(null)
+    }
+  }
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, index) => (
@@ -185,16 +240,16 @@ export function OpenSwaps() {
           <TableBody>
             {isLoading
               ? renderSkeleton()
-              // @ts-ignore
               : swaps.length > 0
-              // @ts-ignore
               ? swaps.map((swap) => {
+                  const isParticipating = participatingSwapId === swap.id
+                  const isOwnSwap = userAddress?.toLowerCase() === swap.userA.toLowerCase()
                   const tokenInfo =
                     TOKENS_BY_ADDRESS[swap.ercToken.toLowerCase()] || {
                       symbol: "UNKNOWN",
                       decimals: 18,
                     }
-                  const formattedUsdtAmount = formatUnits(
+                  const formattedErcAmount = formatUnits(
                     swap.ercAmount,
                     tokenInfo.decimals
                   )
@@ -208,12 +263,17 @@ export function OpenSwaps() {
                       )}...${swap.id.slice(-4)}`}</TableCell>
                       <TableCell>{formattedPcAmount} PC</TableCell>
                       <TableCell>
-                        {formattedUsdtAmount}{" "}
+                        {formattedErcAmount}{" "}
                         <Badge variant="outline">{tokenInfo.symbol}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" disabled>
-                          Participate
+                        <Button
+                          size="sm"
+                          onClick={() => handleParticipateSwap(swap)}
+                          disabled={isParticipating || isOwnSwap}
+                        >
+                          {isParticipating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {isOwnSwap ? "Your Swap" : "Participate"}
                         </Button>
                       </TableCell>
                     </TableRow>
