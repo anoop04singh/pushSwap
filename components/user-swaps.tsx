@@ -143,7 +143,7 @@ export function UserSwaps() {
   const fetchUserSwaps = useCallback(async (userAddress: string) => {
     setIsLoading(true)
     try {
-      const PUSH_RPC_URL = PushUI.CONSTANTS.PUSH_NETWORK.TESTNET.RPC
+      const PUSH_RPC_URL = 'https://evm.rpc-testnet-donut-node1.push.org/'
       const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
       const htlcContract = new ethers.Contract(HTLCSWAP_CONTRACT_ADDRESS, HTLCSWAP_ABI, pushProvider)
 
