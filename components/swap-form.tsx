@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select"
 
 // --- CONFIGURATION from test file ---
-const HTLCSWAP_CONTRACT_ADDRESS = "0xd831A64c8539Ca4E0c1654C60c5A25Fa35042Fb4"
+const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
 
 const TOKENS: Record<string, { address: `0x${string}`; decimals: number }> = {
   USDT: {
