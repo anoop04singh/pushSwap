@@ -1,6 +1,3 @@
-'use client'
-
-import { usePushChainClient } from "@pushchain/ui-kit"
 import { SwapForm } from "@/components/swap-form"
 import { OpenSwaps } from "@/components/open-swaps"
 import { UserSwaps } from "@/components/user-swaps"
@@ -11,17 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { DollarSign, Repeat } from "lucide-react"
-import { ConnectWalletPrompt } from "@/components/connect-wallet-prompt"
 
 export default function HomePage() {
-  const { isInitialized, account } = usePushChainClient()
-
-  // Show a dedicated welcome/connect screen until the wallet is initialized and connected
-  if (!isInitialized || !account) {
-    return <ConnectWalletPrompt />
-  }
-
-  // Render the main application content once connected
   return (
     <div className="flex justify-center p-4 sm:p-6 lg:p-8">
       <main className="flex w-full max-w-2xl flex-1 flex-col gap-4 md:gap-8">
