@@ -17,8 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ConfirmationModal } from "@/components/confirmation-modal"
@@ -84,11 +82,29 @@ const HTLCSWAP_ABI = [{
 }, {
   "inputs": [
     {"internalType": "bytes32", "name": "_swapId", "type": "bytes32"},
-    {"internalType": "bytes32", "name": "_secret", "type": "bytes32"}
+    {"internalType": "bytes32", "name": "_secretB", "type": "bytes32"}
   ],
-  "name": "claimSwap",
+  "name": "claimByUserA",
   "outputs": [],
   "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [
+    {"internalType": "bytes32", "name": "_swapId", "type": "bytes32"},
+    {"internalType": "bytes32", "name": "_secretA", "type": "bytes32"}
+  ],
+  "name": "claimByUserB",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{"internalType": "bytes32", "name": "_swapId", "type": "bytes32"}],
+  "name": "getHashToReveal",
+  "outputs": [
+    {"internalType": "bytes32", "name": "hash", "type": "bytes32"},
+    {"internalType": "bool", "name": "isUserA", "type": "bool"}
+  ],
+  "stateMutability": "view",
   "type": "function"
 }]
 
@@ -124,7 +140,6 @@ export default function SwapDetailsPage() {
   const [isParticipating, setIsParticipating] = useState(false)
   const [isRefunding, setIsRefunding] = useState(false)
   const [isClaiming, setIsClaiming] = useState(false)
-  const [secretToClaim, setSecretToClaim] = useState("")
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState("")
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
@@ -298,31 +313,43 @@ export default function SwapDetailsPage() {
   }
 
   const handleClaim = async () => {
-    if (!isInitialized || !pushChainClient || !swapDetails) {
-      setModalState({ isOpen: true, status: "error", title: "Error", description: "Wallet not connected." })
-      return
-    }
-    if (!secretToClaim || secretToClaim.length !== 66 || !secretToClaim.startsWith('0x')) {
-      setModalState({ isOpen: true, status: "error", title: "Invalid Secret", description: "Please provide a valid 32-byte secret, starting with 0x." })
+    if (!isInitialized || !pushChainClient || !swapDetails || !userAddress) {
+      setModalState({ isOpen: true, status: "error", title: "Error", description: "Client not initialized." })
       return
     }
 
     setIsClaiming(true)
-    setModalState({ isOpen: true, status: "loading", title: "Processing Claim", description: "Please confirm the transaction in your wallet." })
+    setModalState({ isOpen: true, status: "loading", title: "Processing Claim", description: "Fetching secret from contract..." })
 
     try {
+      const PUSH_RPC_URL = 'https://evm.rpc-testnet-donut-node1.push.org/'
+      const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
+      const htlcContract = new ethers.Contract(HTLCSWAP_CONTRACT_ADDRESS, HTLCSWAP_ABI, pushProvider)
+
+      const [secretToUse] = await htlcContract.getHashToReveal(swapDetails.id)
+
+      if (!secretToUse || secretToUse === ethers.ZeroHash) {
+        throw new Error("Invalid secret received from contract. The other party may not have completed their action yet.")
+      }
+
+      setModalState(prev => ({ ...prev, description: "Please confirm the claim transaction in your wallet." }))
+
+      const isUserACaller = userAddress.toLowerCase() === swapDetails.userA.toLowerCase()
+      const functionName = isUserACaller ? 'claimByUserA' : 'claimByUserB'
+      const args = [swapDetails.id, secretToUse as Hex]
+
       const claimTx = await pushChainClient.universal.sendTransaction({
         to: HTLCSWAP_CONTRACT_ADDRESS,
         data: encodeFunctionData({
           abi: HTLCSWAP_ABI,
-          functionName: "claimSwap",
-          args: [swapDetails.id, secretToClaim as Hex],
+          functionName: functionName,
+          args: args,
         }),
       })
 
-      setModalState(prev => ({ ...prev, title: "Processing Transaction", description: "Your transaction is being processed on the network..." }))
+      setModalState(prev => ({ ...prev, description: "Your transaction is being processed..." }))
       const receipt = await claimTx.wait()
-      
+
       setModalState({
         isOpen: true,
         status: "success",
@@ -331,8 +358,8 @@ export default function SwapDetailsPage() {
         actionLabel: "View on Explorer",
         onAction: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank"),
       })
+
       fetchSwapDetails()
-      setSecretToClaim("")
     } catch (error: any) {
       console.error("Claim failed:", error)
       setModalState({ isOpen: true, status: "error", title: "Claim Failed", description: error.shortMessage || error.message })
@@ -346,6 +373,7 @@ export default function SwapDetailsPage() {
   const formattedErcAmount = swapDetails && tokenInfo ? formatUnits(swapDetails.ercAmount, tokenInfo.decimals) : ""
   const formattedPcAmount = swapDetails ? formatUnits(swapDetails.pcAmount, 18) : ""
   const isOwnSwap = userAddress && swapDetails && userAddress.toLowerCase() === swapDetails.userA.toLowerCase()
+  const isParticipant = userAddress && swapDetails && userAddress.toLowerCase() === swapDetails.userB.toLowerCase()
   const canParticipate = swapDetails?.state === 1 && !isOwnSwap
   const isExpired = timeRemaining === "Expired"
   const canRefund = isOwnSwap && swapDetails?.state === 1 && isExpired
@@ -427,6 +455,58 @@ export default function SwapDetailsPage() {
     )
   }
 
+  const renderClaimCard = () => {
+    if (!swapDetails || (swapDetails.state !== 2 && swapDetails.state !== 3)) {
+      return null
+    }
+
+    let title = ""
+    let description = ""
+    let buttonText = ""
+    let canClaim = false
+
+    if (isOwnSwap) { // User A
+      if (swapDetails.state === 2) {
+        title = "Awaiting Participant's Claim"
+        description = "The participant (User B) must claim their tokens first. Once they do, you will be able to claim your PC."
+      } else if (swapDetails.state === 3) {
+        title = "Claim Your PC"
+        description = "The participant has claimed their tokens. You can now claim your PC by revealing their secret."
+        buttonText = "Claim PC"
+        canClaim = true
+      }
+    } else if (isParticipant) { // User B
+      if (swapDetails.state === 2) {
+        title = "Claim Your Tokens"
+        description = "You can now claim your tokens by revealing the creator's secret. This will complete the swap from your side."
+        buttonText = "Claim Tokens"
+        canClaim = true
+      } else if (swapDetails.state === 3) {
+        title = "Tokens Claimed"
+        description = "You have successfully claimed your tokens. The swap is complete."
+      }
+    } else {
+      return null // Not involved in this swap
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        {canClaim && (
+          <CardFooter>
+            <Button className="w-full" onClick={handleClaim} disabled={isClaiming || !isInitialized}>
+              {isClaiming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {buttonText}
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+    )
+  }
+
   return (
     <div className="flex justify-center p-4 sm:p-6 lg:p-8">
       <main className="flex w-full max-w-2xl flex-1 flex-col gap-4 md:gap-8">
@@ -442,38 +522,7 @@ export default function SwapDetailsPage() {
           {renderContent()}
         </Card>
 
-        {swapDetails?.state === 2 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Claim Your Funds</CardTitle>
-              <CardDescription>
-                {isOwnSwap
-                  ? "Enter Secret B from the participant to claim your PC. You can find this in the 'participateSwap' transaction logs on the explorer."
-                  : "Enter Secret A from the creator to claim your tokens. You can find this after they claim, in the 'claimSwap' transaction logs on the explorer."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3">
-                <Label htmlFor="secret-claim">
-                  {isOwnSwap ? "Secret B" : "Secret A"}
-                </Label>
-                <Input
-                  id="secret-claim"
-                  placeholder="0x..."
-                  value={secretToClaim}
-                  onChange={(e) => setSecretToClaim(e.target.value)}
-                  disabled={isClaiming}
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" onClick={handleClaim} disabled={isClaiming || !secretToClaim || !isInitialized}>
-                {isClaiming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isOwnSwap ? "Claim PC" : "Claim Tokens"}
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
+        {renderClaimCard()}
 
         <ConfirmationModal
           isOpen={isConfirmationOpen}
