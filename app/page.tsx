@@ -1,3 +1,6 @@
+'use client'
+
+import { usePushChainClient } from "@pushchain/ui-kit"
 import { SwapForm } from "@/components/swap-form"
 import { OpenSwaps } from "@/components/open-swaps"
 import { UserSwaps } from "@/components/user-swaps"
@@ -8,8 +11,18 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { DollarSign, Repeat } from "lucide-react"
+import { ConnectWalletPrompt } from "@/components/connect-wallet-prompt"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function HomePage() {
+  const { isInitialized, account } = usePushChainClient()
+
+  // Show a dedicated welcome/connect screen until the wallet is initialized and connected
+  if (!isInitialized || !account) {
+    return <ConnectWalletPrompt />
+  }
+
+  // Render the main application content once connected
   return (
     <div className="flex justify-center p-4 sm:p-6 lg:p-8">
       <main className="flex w-full max-w-2xl flex-1 flex-col gap-4 md:gap-8">
@@ -41,15 +54,23 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-        <div>
-          <SwapForm />
-        </div>
-        <div>
-          <UserSwaps />
-        </div>
-        <div>
-          <OpenSwaps />
-        </div>
+
+        <Tabs defaultValue="create-swap" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="create-swap">Create Swap</TabsTrigger>
+            <TabsTrigger value="open-swaps">Open Swaps</TabsTrigger>
+            <TabsTrigger value="my-swaps">My Swaps</TabsTrigger>
+          </TabsList>
+          <TabsContent value="create-swap">
+            <SwapForm />
+          </TabsContent>
+          <TabsContent value="open-swaps">
+            <OpenSwaps />
+          </TabsContent>
+          <TabsContent value="my-swaps">
+            <UserSwaps />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
