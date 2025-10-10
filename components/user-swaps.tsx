@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StatusModal } from "@/components/status-modal"
 import { Loader2 } from "lucide-react"
 
-const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
+const HTLCSWAP_CONTRACT_ADDRESS = "0x4F4AeEce92E0878502d3E29E1F71cF6466D09f47"
 
 const TOKENS_BY_ADDRESS: Record<string, { symbol: string; decimals: number }> = {
   "0xca0c5e6f002a389e1580f0db7cd06e4549b5f9d3": {
