@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
 import { ethers } from "ethers"
 import { formatUnits, encodeFunctionData, type Hex } from "viem"
+import { toast } from "sonner"
 import { ArrowLeft, ArrowRight, Loader2, Info, Users, Lock, Clock } from "lucide-react"
 import Link from "next/link"
 
@@ -19,8 +20,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ConfirmationModal } from "@/components/confirmation-modal"
-import { StatusModal } from "@/components/status-modal"
+import { Separator } from "@/components/ui/separator"
 
 // --- Contract Config ---
 const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
@@ -107,20 +107,6 @@ export default function SwapDetailsPage() {
   const [isParticipating, setIsParticipating] = useState(false)
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState("")
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean
-    status: "loading" | "success" | "error"
-    title: string
-    description: React.ReactNode
-    onAction?: () => void
-    actionLabel?: string
-  }>({
-    isOpen: false,
-    status: "loading",
-    title: "",
-    description: "",
-  })
 
   const fetchSwapDetails = useCallback(async () => {
     if (!swapId) return
@@ -148,6 +134,7 @@ export default function SwapDetailsPage() {
       })
     } catch (error) {
       console.error("Failed to fetch swap details:", error)
+      toast.error("Could not fetch swap details.")
       setSwapDetails(null)
     } finally {
       setIsLoading(false)
@@ -190,21 +177,18 @@ export default function SwapDetailsPage() {
     return () => clearInterval(interval)
   }, [swapDetails?.timelock])
 
-  const executeParticipation = async () => {
+  const handleParticipateSwap = async () => {
     if (!isInitialized || !pushChainClient || !swapDetails) {
-      setModalState({ isOpen: true, status: "error", title: "Error", description: "Wallet not connected or client not initialized." })
+      toast.error("Wallet not connected or client not initialized.")
       return
     }
     setIsParticipating(true)
-    setModalState({ isOpen: true, status: "loading", title: "Preparing Swap", description: "Generating secrets and preparing your transaction..." })
-
+    const toastId = toast.loading("Preparing to participate...")
     try {
       const rawSecretB = ethers.randomBytes(32)
       const secretB = ethers.hexlify(rawSecretB)
       const hashB = ethers.keccak256(rawSecretB)
-      
-      setModalState(prev => ({ ...prev, title: "Awaiting Confirmation", description: "Please confirm the transaction in your wallet." }))
-
+      toast.loading("Generated secrets. Sending transaction...", { id: toastId })
       const participateTx = await pushChainClient.universal.sendTransaction({
         to: HTLCSWAP_CONTRACT_ADDRESS,
         value: swapDetails.pcAmount,
@@ -214,28 +198,16 @@ export default function SwapDetailsPage() {
           args: [swapDetails.id, hashB, secretB],
         }),
       })
-
-      setModalState(prev => ({ ...prev, title: "Processing Transaction", description: "Your transaction is being processed on the network..." }))
       const receipt = await participateTx.wait()
-      
-      setModalState({
-        isOpen: true,
-        status: "success",
-        title: "Participation Successful!",
-        description: (
-          <div className="flex flex-col gap-2 text-sm">
-            <p>You have successfully joined the swap.</p>
-            <p className="font-bold">IMPORTANT: Save your secret!</p>
-            <p className="font-mono break-all bg-muted p-2 rounded-md text-xs">{secretB}</p>
-          </div>
-        ),
-        actionLabel: "View on Explorer",
-        onAction: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank"),
+      toast.success("Successfully participated in swap!", {
+        id: toastId,
+        description: `Tx: ${receipt.hash.slice(0, 10)}... IMPORTANT: Save your secret! Secret B: ${secretB.slice(0, 10)}...`,
+        action: { label: "View on Explorer", onClick: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank") },
       })
       fetchSwapDetails()
     } catch (error: any) {
       console.error("Participation failed:", error)
-      setModalState({ isOpen: true, status: "error", title: "Participation Failed", description: error.shortMessage || error.message })
+      toast.error("Participation failed", { id: toastId, description: error.shortMessage || error.message })
     } finally {
       setIsParticipating(false)
     }
@@ -246,7 +218,7 @@ export default function SwapDetailsPage() {
   const formattedErcAmount = swapDetails && tokenInfo ? formatUnits(swapDetails.ercAmount, tokenInfo.decimals) : ""
   const formattedPcAmount = swapDetails ? formatUnits(swapDetails.pcAmount, 18) : ""
   const isOwnSwap = userAddress && swapDetails && userAddress.toLowerCase() === swapDetails.userA.toLowerCase()
-  const canParticipate = swapDetails?.state === 1 && !isOwnSwap
+  const canParticipate = swapDetails?.state === 1 && !isOwnSwap // State 1 is OPEN
 
   const renderContent = () => {
     if (isLoading) {
@@ -297,7 +269,7 @@ export default function SwapDetailsPage() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button className="w-full" onClick={() => setIsConfirmationOpen(true)} disabled={!canParticipate || isParticipating || !isInitialized}>
+          <Button className="w-full" onClick={handleParticipateSwap} disabled={!canParticipate || isParticipating || !isInitialized}>
             {isParticipating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {isOwnSwap ? "This is your swap" : (swapDetails.state !== 1 ? `Swap is ${states[swapDetails.state]}` : "Participate")}
           </Button>
@@ -320,25 +292,6 @@ export default function SwapDetailsPage() {
           </CardHeader>
           {renderContent()}
         </Card>
-        <ConfirmationModal
-          isOpen={isConfirmationOpen}
-          onOpenChange={setIsConfirmationOpen}
-          title="Confirm Participation"
-          description={`You are about to send ${formattedPcAmount} PC to participate in this swap. Are you sure you want to proceed?`}
-          onConfirm={() => {
-            setIsConfirmationOpen(false)
-            executeParticipation()
-          }}
-        />
-        <StatusModal
-          isOpen={modalState.isOpen}
-          onOpenChange={(open) => setModalState(prev => ({ ...prev, isOpen: open }))}
-          status={modalState.status}
-          title={modalState.title}
-          description={modalState.description}
-          actionLabel={modalState.actionLabel}
-          onAction={modalState.onAction}
-        />
       </main>
     </div>
   )

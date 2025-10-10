@@ -5,6 +5,7 @@ import { ArrowDown, Loader2 } from "lucide-react"
 import { usePushChainClient, usePushChain } from "@pushchain/ui-kit"
 import { encodeFunctionData } from "viem"
 import { ethers } from "ethers"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { StatusModal } from "@/components/status-modal"
 
 // --- CONFIGURATION from test file ---
 const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
@@ -34,6 +34,7 @@ const TOKENS: Record<string, { address: `0x${string}`; decimals: number }> = {
     address: "0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3",
     decimals: 6,
   },
+  // We can add other tokens like USDC here later
 }
 
 const IERC20_ABI = [
@@ -74,52 +75,26 @@ export function SwapForm() {
   const [receiveAmount, setReceiveAmount] = useState("")
   const [selectedToken, setSelectedToken] = useState("USDT")
   const [isLoading, setIsLoading] = useState(false)
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean
-    status: "loading" | "success" | "error"
-    title: string
-    description: React.ReactNode
-    onAction?: () => void
-    actionLabel?: string
-  }>({
-    isOpen: false,
-    status: "loading",
-    title: "",
-    description: "",
-  })
 
   const handleCreateSwap = useCallback(async () => {
     if (!isInitialized || !pushChainClient || !PushChain) {
-      setModalState({
-        isOpen: true,
-        status: "error",
-        title: "Error",
-        description: "Wallet not connected or client not initialized.",
-      })
+      toast.error("Wallet not connected or client not initialized.")
       return
     }
     if (!sendAmount || !receiveAmount || parseFloat(sendAmount) <= 0 || parseFloat(receiveAmount) <= 0) {
-      setModalState({
-        isOpen: true,
-        status: "error",
-        title: "Invalid Input",
-        description: "Please enter valid amounts for the swap.",
-      })
+      toast.error("Please enter valid amounts for the swap.")
       return
     }
 
     setIsLoading(true)
-    setModalState({
-      isOpen: true,
-      status: "loading",
-      title: "Preparing Swap",
-      description: "Generating secrets and preparing your transaction...",
-    })
+    const toastId = toast.loading("Preparing swap...")
 
     try {
+      // Generate swap parameters
       const RawsecretA = ethers.randomBytes(32)
       const secretA = ethers.hexlify(RawsecretA)
       const hashA = ethers.keccak256(secretA)
+      toast.info(`Generated Secret: ${secretA.slice(0, 10)}...`, { id: toastId })
 
       const tokenInfo = TOKENS[selectedToken]
       const sendAmountParsed = PushChain.utils.helpers.parseUnits(
@@ -129,10 +104,11 @@ export function SwapForm() {
       const receiveAmountParsed = PushChain.utils.helpers.parseUnits(
         receiveAmount,
         18
-      )
-      const timelock = Math.floor(Date.now() / 1000) + 3600
+      ) // PC has 18 decimals
+      const timelock = Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
 
-      setModalState(prev => ({ ...prev, title: "Token Approval", description: "Please approve the token spend in your wallet." }))
+      // 1. Approve token spending
+      toast.loading("Approving token spend...", { id: toastId })
       const approveTx = await pushChainClient.universal.sendTransaction({
         to: tokenInfo.address,
         data: encodeFunctionData({
@@ -142,8 +118,9 @@ export function SwapForm() {
         }),
       })
       await approveTx.wait()
+      toast.loading("Token approved. Creating swap...", { id: toastId })
 
-      setModalState(prev => ({ ...prev, title: "Creating Swap", description: "Please confirm the swap creation transaction in your wallet." }))
+      // 2. Create the swap
       const createSwapTx = await pushChainClient.universal.sendTransaction({
         to: HTLCSWAP_CONTRACT_ADDRESS,
         data: encodeFunctionData({
@@ -161,32 +138,22 @@ export function SwapForm() {
       })
 
       const receipt = await createSwapTx.wait()
-      setModalState({
-        isOpen: true,
-        status: "success",
-        title: "Swap Created!",
-        description: (
-          <div className="flex flex-col gap-2 text-sm">
-            <p>Your swap has been created successfully.</p>
-            <p className="font-bold">IMPORTANT: Save your secret!</p>
-            <p className="font-mono break-all bg-muted p-2 rounded-md text-xs">{secretA}</p>
-          </div>
-        ),
-        actionLabel: "View on Explorer",
-        onAction: () =>
-          window.open(
-            pushChainClient.explorer.getTransactionUrl(receipt.hash),
-            "_blank"
-          ),
+      toast.success("Swap created successfully!", {
+        id: toastId,
+        description: `Transaction Hash: ${receipt.hash.slice(0, 10)}...`,
+        action: {
+          label: "View on Explorer",
+          onClick: () =>
+            window.open(
+              pushChainClient.explorer.getTransactionUrl(receipt.hash),
+              "_blank"
+            ),
+        },
       })
-      setSendAmount("")
-      setReceiveAmount("")
     } catch (error: any) {
       console.error("Swap creation failed:", error)
-      setModalState({
-        isOpen: true,
-        status: "error",
-        title: "Swap Creation Failed",
+      toast.error("Swap creation failed", {
+        id: toastId,
         description: error.shortMessage || error.message,
       })
     } finally {
@@ -213,89 +180,79 @@ export function SwapForm() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Swap</CardTitle>
-          <CardDescription>
-            Select the token you want to swap for native PC token.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-6">
-          <div className="grid gap-3">
-            <Label htmlFor="you-send">You Send</Label>
-            <div className="grid grid-cols-[1fr_auto] gap-2">
-              <Input
-                id="you-send"
-                type="number"
-                placeholder="0.0"
-                value={sendAmount}
-                onChange={(e) => setSendAmount(e.target.value)}
-                disabled={isLoading}
-              />
-              <Select
-                defaultValue={selectedToken}
-                onValueChange={setSelectedToken}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Token" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USDT">USDT</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Create Swap</CardTitle>
+        <CardDescription>
+          Select the token you want to swap for native PC token.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-6">
+        <div className="grid gap-3">
+          <Label htmlFor="you-send">You Send</Label>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Input
+              id="you-send"
+              type="number"
+              placeholder="0.0"
+              value={sendAmount}
+              onChange={(e) => setSendAmount(e.target.value)}
+              disabled={isLoading}
+            />
+            <Select
+              defaultValue={selectedToken}
+              onValueChange={setSelectedToken}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Token" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USDT">USDT</SelectItem>
+                {/* <SelectItem value="USDC">USDC</SelectItem> */}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="relative flex justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-card rounded-full border p-2">
-                <ArrowDown className="h-4 w-4 text-muted-foreground" />
-              </span>
-            </div>
+            <span className="bg-card rounded-full border p-2">
+              <ArrowDown className="h-4 w-4 text-muted-foreground" />
+            </span>
           </div>
-          <div className="grid gap-3">
-            <Label htmlFor="you-receive">You Receive</Label>
-            <div className="grid grid-cols-[1fr_auto] gap-2">
-              <Input
-                id="you-receive"
-                type="number"
-                placeholder="0.0"
-                value={receiveAmount}
-                onChange={(e) => setReceiveAmount(e.target.value)}
-                disabled={isLoading}
-              />
-              <Button variant="outline" className="w-[120px]" disabled>
-                PC
-              </Button>
-            </div>
+        </div>
+        <div className="grid gap-3">
+          <Label htmlFor="you-receive">You Receive</Label>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Input
+              id="you-receive"
+              type="number"
+              placeholder="0.0"
+              value={receiveAmount}
+              onChange={(e) => setReceiveAmount(e.target.value)}
+              disabled={isLoading}
+            />
+            <Button variant="outline" className="w-[120px]" disabled>
+              PC
+            </Button>
           </div>
-        </CardContent>
-        <CardFooter>
-          <Button
-            className="w-full"
-            onClick={handleCreateSwap}
-            disabled={!isInitialized || isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isLoading ? "Processing..." : "Create Swap"}
-          </Button>
-        </CardFooter>
-      </Card>
-      <StatusModal
-        isOpen={modalState.isOpen}
-        onOpenChange={(open) => setModalState(prev => ({ ...prev, isOpen: open }))}
-        status={modalState.status}
-        title={modalState.title}
-        description={modalState.description}
-        actionLabel={modalState.actionLabel}
-        onAction={modalState.onAction}
-      />
-    </>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button
+          className="w-full"
+          onClick={handleCreateSwap}
+          disabled={!isInitialized || isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : null}
+          {isLoading ? "Processing..." : "Create Swap"}
+        </Button>
+      </CardFooter>
+    </Card>
   )
 }
