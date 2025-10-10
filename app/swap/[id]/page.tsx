@@ -326,7 +326,9 @@ export default function SwapDetailsPage() {
       const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
       const htlcContract = new ethers.Contract(HTLCSWAP_CONTRACT_ADDRESS, HTLCSWAP_ABI, pushProvider)
 
-      const [secretToUse] = await htlcContract.getHashToReveal(swapDetails.id)
+      const [secretToUse] = await htlcContract.getHashToReveal(swapDetails.id, {
+        from: userAddress
+      })
 
       if (!secretToUse || secretToUse === ethers.ZeroHash) {
         throw new Error("Invalid secret received from contract. The other party may not have completed their action yet.")
