@@ -412,7 +412,7 @@ export default function SwapDetailsPage() {
     }
   }
 
-  const states = ['NONE', 'OPEN', 'LOCKED', 'COMPLETED', 'REFUNDED']
+  const states = ['NONE', 'OPEN', 'LOCKED', 'CLAIMEDBYB', 'COMPLETED', 'REFUNDED']
   const tokenInfo = swapDetails ? TOKENS_BY_ADDRESS[swapDetails.ercToken.toLowerCase()] || { symbol: "UNKNOWN", decimals: 18 } : null
   const formattedErcAmount = swapDetails && tokenInfo ? formatUnits(swapDetails.ercAmount, tokenInfo.decimals) : ""
   const formattedPcAmount = swapDetails ? formatUnits(swapDetails.pcAmount, 18) : ""

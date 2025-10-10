@@ -89,7 +89,7 @@ interface SwapDetails {
   timelock: bigint
 }
 
-const states = ['NONE', 'OPEN', 'LOCKED', 'COMPLETED', 'REFUNDED']
+const states = ['NONE', 'OPEN', 'LOCKED', 'CLAIMEDBYB', 'COMPLETED', 'REFUNDED']
 
 const SwapTable = ({ swaps, isLoading, handleRefund, isCreatedTab, isRefunding, refundingId }: { swaps: SwapDetails[], isLoading: boolean, handleRefund: (swapId: string) => void, isCreatedTab: boolean, isRefunding: boolean, refundingId: string | null }) => {
   const renderSkeleton = () =>
