@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
 import { ethers } from "ethers"
-import { formatUnits } from "viem"
+import { formatUnits, type Hex } from "viem"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -66,8 +66,8 @@ const HTLCSWAP_ABI = [{
 
 interface SwapDetails {
   id: string
-  userA: `0x${string}`
-  ercToken: `0x${string}`
+  userA: Hex
+  ercToken: Hex
   ercAmount: bigint
   pcAmount: bigint
 }

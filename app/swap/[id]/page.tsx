@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
 import { ethers } from "ethers"
-import { formatUnits, encodeFunctionData, type `0x${string}` } from "viem"
+import { formatUnits, encodeFunctionData, type Hex } from "viem"
 import { toast } from "sonner"
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // --- Contract Config ---
-const HTLCSWAP_CONTRACT_ADDRESS = "0xd831A64c8539Ca4E0c1654C60c5A25Fa35042Fb4"
+const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
 const TOKENS_BY_ADDRESS: Record<string, { symbol: string; decimals: number }> = {
   "0xca0c5e6f002a389e1580f0db7cd06e4549b5f9d3": {
     symbol: "USDT",
@@ -64,9 +64,9 @@ const HTLCSWAP_ABI = [{
 
 interface SwapDetails {
   id: string
-  userA: `0x${string}`
-  userB: `0x${string}`
-  ercToken: `0x${string}`
+  userA: Hex
+  userB: Hex
+  ercToken: Hex
   ercAmount: bigint
   pcAmount: bigint
   state: number
