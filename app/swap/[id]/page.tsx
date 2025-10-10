@@ -106,6 +106,12 @@ const HTLCSWAP_ABI = [{
   ],
   "stateMutability": "view",
   "type": "function"
+}, {
+  "inputs": [{"internalType": "bytes32", "name": "_swapId", "type": "bytes32"}],
+  "name": "refundLockedSwap",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
 }]
 
 interface SwapDetails {
@@ -312,6 +318,42 @@ export default function SwapDetailsPage() {
     }
   }
 
+  const handleRefundLockedSwap = async () => {
+    if (!isInitialized || !pushChainClient || !swapDetails) {
+      setModalState({ isOpen: true, status: "error", title: "Error", description: "Wallet not connected." })
+      return
+    }
+    setIsRefunding(true)
+    setModalState({ isOpen: true, status: "loading", title: "Processing Refund", description: "Please confirm the transaction in your wallet." })
+
+    try {
+      const refundTx = await pushChainClient.universal.sendTransaction({
+        to: HTLCSWAP_CONTRACT_ADDRESS,
+        data: encodeFunctionData({
+          abi: HTLCSWAP_ABI,
+          functionName: "refundLockedSwap",
+          args: [swapDetails.id],
+        }),
+      })
+
+      const receipt = await refundTx.wait()
+      setModalState({
+        isOpen: true,
+        status: "success",
+        title: "Refund Successful!",
+        description: "The locked funds have been returned to both parties.",
+        actionLabel: "View on Explorer",
+        onAction: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank"),
+      })
+      fetchSwapDetails()
+    } catch (error: any) {
+      console.error("Locked swap refund failed:", error)
+      setModalState({ isOpen: true, status: "error", title: "Refund Failed", description: error.shortMessage || error.message })
+    } finally {
+      setIsRefunding(false)
+    }
+  }
+
   const handleClaim = async () => {
     if (!isInitialized || !pushChainClient || !swapDetails || !userAddress) {
       setModalState({ isOpen: true, status: "error", title: "Error", description: "Client not initialized." })
@@ -465,24 +507,42 @@ export default function SwapDetailsPage() {
     let title = ""
     let description = ""
     let buttonText = ""
-    let canClaim = false
+    let actionHandler: (() => void) | undefined = undefined
+    let buttonVariant: "default" | "destructive" = "default"
+    let actionInProgress = isClaiming
 
     if (isOwnSwap) { // User A
       if (swapDetails.state === 2) {
-        title = "Awaiting Participant's Claim"
-        description = "The participant (User B) must claim their tokens first. Once they do, you will be able to claim your PC."
+        if (isExpired) {
+            title = "Swap Expired"
+            description = "The participant did not claim the swap in time. You can now refund both your and the participant's funds."
+            buttonText = "Refund Locked Swap"
+            actionHandler = handleRefundLockedSwap
+            buttonVariant = "destructive"
+            actionInProgress = isRefunding
+        } else {
+            title = "Awaiting Participant's Claim"
+            description = "The participant (User B) must claim their tokens first. Once they do, you will be able to claim your PC."
+        }
       } else if (swapDetails.state === 3) {
         title = "Claim Your PC"
         description = "The participant has claimed their tokens. You can now claim your PC by revealing their secret."
         buttonText = "Claim PC"
-        canClaim = true
+        actionHandler = handleClaim
+        actionInProgress = isClaiming
       }
     } else if (isParticipant) { // User B
       if (swapDetails.state === 2) {
-        title = "Claim Your Tokens"
-        description = "You can now claim your tokens by revealing the creator's secret. This will complete the swap from your side."
-        buttonText = "Claim Tokens"
-        canClaim = true
+        if (isExpired) {
+            title = "Swap Expired"
+            description = "You did not claim the swap in time. The creator (User A) can now refund the swap."
+        } else {
+            title = "Claim Your Tokens"
+            description = "You can now claim your tokens by revealing the creator's secret. This will complete the swap from your side."
+            buttonText = "Claim Tokens"
+            actionHandler = handleClaim
+            actionInProgress = isClaiming
+        }
       } else if (swapDetails.state === 3) {
         title = "Tokens Claimed"
         description = "You have successfully claimed your tokens. The swap is complete."
@@ -497,10 +557,10 @@ export default function SwapDetailsPage() {
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
-        {canClaim && (
+        {actionHandler && (
           <CardFooter>
-            <Button className="w-full" onClick={handleClaim} disabled={isClaiming || !isInitialized}>
-              {isClaiming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button className="w-full" variant={buttonVariant} onClick={actionHandler} disabled={actionInProgress || !isInitialized}>
+              {actionInProgress && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {buttonText}
             </Button>
           </CardFooter>
