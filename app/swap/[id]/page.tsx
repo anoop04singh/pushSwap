@@ -118,8 +118,8 @@ export default function SwapDetailsPage() {
       if (isInitialized && pushChainClient) {
         const address = await pushChainClient.universal.account
         setUserAddress(address)
+        fetchSwapDetails()
       }
-      fetchSwapDetails()
     }
     init()
   }, [isInitialized, pushChainClient, fetchSwapDetails])
@@ -176,6 +176,76 @@ export default function SwapDetailsPage() {
   const isOwnSwap = userAddress && swapDetails && userAddress.toLowerCase() === swapDetails.userA.toLowerCase()
   const canParticipate = swapDetails?.state === 0 && !isOwnSwap
 
+  const renderContent = () => {
+    if (!isInitialized) {
+      return (
+        <CardContent>
+          <p className="text-center text-muted-foreground">
+            Please connect your wallet to view swap details.
+          </p>
+        </CardContent>
+      )
+    }
+
+    if (isLoading) {
+      return (
+        <CardContent className="grid gap-4">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      )
+    }
+
+    if (!swapDetails || !tokenInfo) {
+      return (
+        <CardContent>
+          <p className="text-center text-muted-foreground">Swap not found.</p>
+        </CardContent>
+      )
+    }
+
+    return (
+      <>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <span className="text-muted-foreground">Status</span>
+            <Badge variant={swapDetails.state === 0 ? "outline" : "secondary"}>
+              {swapDetails.state === 0 ? "Open" : "Closed/Completed"}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <span className="text-muted-foreground">Initiator</span>
+            <span className="font-mono text-sm break-all">{swapDetails.userA}</span>
+          </div>
+          <div className="flex items-center justify-around gap-4 rounded-lg border p-4 text-center">
+            <div>
+              <p className="text-muted-foreground text-sm">You Send</p>
+              <p className="text-xl font-bold">{formattedPcAmount} PC</p>
+            </div>
+            <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <div>
+              <p className="text-muted-foreground text-sm">You Receive</p>
+              <p className="text-xl font-bold">{formattedErcAmount} {tokenInfo.symbol}</p>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button
+            className="w-full"
+            onClick={handleParticipateSwap}
+            disabled={!canParticipate || isParticipating || !isInitialized}
+          >
+            {isParticipating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isOwnSwap ? "This is your swap" : (swapDetails.state !== 0 ? "Swap is not open" : "Participate")}
+          </Button>
+        </CardFooter>
+      </>
+    )
+  }
+
   return (
     <div className="flex justify-center p-4 sm:p-6 lg:p-8">
       <main className="flex w-full max-w-2xl flex-1 flex-col gap-4 md:gap-8">
@@ -190,61 +260,11 @@ export default function SwapDetailsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Swap Details</CardTitle>
-            {isLoading ? (
-              <Skeleton className="h-4 w-3/4" />
-            ) : (
-              <CardDescription className="font-mono text-xs break-all">
-                ID: {swapId}
-              </CardDescription>
-            )}
+            <CardDescription className="font-mono text-xs break-all">
+              ID: {swapId}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : swapDetails && tokenInfo ? (
-              <>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge variant={swapDetails.state === 0 ? "outline" : "secondary"}>
-                    {swapDetails.state === 0 ? "Open" : "Closed/Completed"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-muted-foreground">Initiator</span>
-                  <span className="font-mono text-sm break-all">{swapDetails.userA}</span>
-                </div>
-                <div className="flex items-center justify-around gap-4 rounded-lg border p-4 text-center">
-                  <div>
-                    <p className="text-muted-foreground text-sm">You Send</p>
-                    <p className="text-xl font-bold">{formattedPcAmount} PC</p>
-                  </div>
-                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">You Receive</p>
-                    <p className="text-xl font-bold">{formattedErcAmount} {tokenInfo.symbol}</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground">Swap not found.</p>
-            )}
-          </CardContent>
-          {swapDetails && (
-            <CardFooter>
-              <Button
-                className="w-full"
-                onClick={handleParticipateSwap}
-                disabled={!canParticipate || isParticipating || !isInitialized}
-              >
-                {isParticipating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isOwnSwap ? "This is your swap" : (swapDetails.state !== 0 ? "Swap is not open" : "Participate")}
-              </Button>
-            </CardFooter>
-          )}
+          {renderContent()}
         </Card>
       </main>
     </div>
