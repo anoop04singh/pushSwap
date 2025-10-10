@@ -2,9 +2,11 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { PushUniversalAccountButton } from "@pushchain/ui-kit"
+import { usePushChainClient, PushUniversalAccountButton } from "@pushchain/ui-kit"
 
 export function Header() {
+  const { account } = usePushChainClient()
+
   return (
     <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <nav className="flex items-center gap-5 text-lg font-medium md:text-sm lg:gap-6">
@@ -24,7 +26,8 @@ export function Header() {
         </Link>
       </nav>
       <div className="ml-auto">
-        <PushUniversalAccountButton />
+        {/* Only show the button if the user is connected */}
+        {account && <PushUniversalAccountButton />}
       </div>
     </header>
   )
