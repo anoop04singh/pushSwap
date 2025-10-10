@@ -19,6 +19,9 @@ const playfairDisplay = Playfair_Display({
 export const metadata: Metadata = {
   title: "PushSwap",
   description: "P2P Swap for Pushchain",
+  icons: {
+    icon: "/favicon.png",
+  },
 }
 
 export default function RootLayout({
