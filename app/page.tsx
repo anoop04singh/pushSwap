@@ -1,65 +1,32 @@
-import { SwapForm } from "@/components/swap-form"
-import { OpenSwaps } from "@/components/open-swaps"
-import { UserSwaps } from "@/components/user-swaps"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { DollarSign, Repeat } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+"use client"
 
-export default function HomePage() {
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { usePushChainClient, PushUniversalAccountButton } from "@pushchain/ui-kit"
+
+export default function WelcomePage() {
+  const { isInitialized } = usePushChainClient()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isInitialized) {
+      router.push("/home")
+    }
+  }, [isInitialized, router])
+
   return (
-    <div className="flex justify-center p-4 sm:p-6 lg:p-8">
-      <main className="flex w-full max-w-2xl flex-1 flex-col gap-4 md:gap-8">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Swaps</CardTitle>
-              <Repeat className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">1,234</div>
-              <p className="text-xs text-muted-foreground">
-                +5.2% from last week
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pairs Available
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">56</div>
-              <p className="text-xs text-muted-foreground">
-                Across multiple chains
-              </p>
-            </CardContent>
-          </Card>
+    <main className="flex h-screen flex-col items-center justify-center text-center p-4">
+      <div className="flex flex-col items-center gap-6">
+        <h1 className="font-playfair text-6xl md:text-8xl font-bold italic text-primary">
+          pushSwap
+        </h1>
+        <p className="text-muted-foreground">
+          Connect your wallet to continue
+        </p>
+        <div className="mt-4">
+          <PushUniversalAccountButton />
         </div>
-
-        <Tabs defaultValue="create" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="create">Create Swap</TabsTrigger>
-            <TabsTrigger value="open">Open Swaps</TabsTrigger>
-            <TabsTrigger value="my-swaps">My Swaps</TabsTrigger>
-          </TabsList>
-          <TabsContent value="create">
-            <SwapForm />
-          </TabsContent>
-          <TabsContent value="open">
-            <OpenSwaps />
-          </TabsContent>
-          <TabsContent value="my-swaps">
-            <UserSwaps />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+      </div>
+    </main>
   )
 }

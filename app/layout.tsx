@@ -2,10 +2,10 @@ import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
+import { Playfair_Display } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Header } from "@/components/header"
 import { WalletProvider } from "@/components/wallet-provider"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -18,6 +18,13 @@ export const metadata: Metadata = {
   },
 }
 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  style: ["italic"],
+  weight: ["700"],
+  variable: "--font-playfair",
+})
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,7 +33,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${playfair.variable} antialiased`}
       suppressHydrationWarning
     >
       <body className="font-sans">
@@ -38,7 +45,6 @@ export default function RootLayout({
         >
           <WalletProvider>
             <div className="flex min-h-screen w-full flex-col">
-              <Header />
               <Suspense>{children}</Suspense>
             </div>
             <Toaster />
