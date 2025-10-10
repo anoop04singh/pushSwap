@@ -15,11 +15,11 @@
   --popover-foreground: oklch(0.63 0.24 335);
 
   /* Primary pink highlight */
-  --primary: oklch(0.7 0.27 335); /* Approx #ff65c3 */
+  --primary: #ff65c3;
   --primary-foreground: oklch(1 0 0);
 
   --secondary: oklch(1 0 0);
-  --secondary-foreground: oklch(0.7 0.27 335);
+  --secondary-foreground: #ff65c3;
 
   --muted: oklch(0.9189 0.0147 106.6853);
   --muted-foreground: oklch(0.63 0.24 335);
@@ -31,12 +31,12 @@
   --destructive-foreground: oklch(1 0 0);
 
   /* Border and ring colors using pink */
-  --border: oklch(0.7 0.27 335);
-  --input: oklch(0.7 0.27 335);
-  --ring: oklch(0.7 0.27 335);
+  --border: #ff65c3;
+  --input: #ff65c3;
+  --ring: #ff65c3;
 
   /* Charts */
-  --chart-1: oklch(0.7 0.27 335);
+  --chart-1: #ff65c3;
   --chart-2: oklch(0.6 0.23 335);
   --chart-3: oklch(0.8 0.2 335);
   --chart-4: oklch(0.9 0.18 335);
@@ -45,12 +45,12 @@
   /* Sidebar tones */
   --sidebar: oklch(0.9721 0.0158 110.5501);
   --sidebar-foreground: oklch(0.63 0.24 335);
-  --sidebar-primary: oklch(0.7 0.27 335);
+  --sidebar-primary: #ff65c3;
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.9 0.2 335);
   --sidebar-accent-foreground: oklch(0.63 0.24 335);
   --sidebar-border: oklch(0.63 0.24 335);
-  --sidebar-ring: oklch(0.7 0.27 335);
+  --sidebar-ring: #ff65c3;
 
   /* Radii */
   --radius-sm: 0rem;
