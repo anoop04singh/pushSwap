@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
+const HTLCSWAP_CONTRACT_ADDRESS = "0x4F4AeEce92E0878502d3E29E1F71cF6466D09f47"
 const HTLCSWAP_ABI = [{
   "inputs": [],
   "name": "getOpenSwaps",
