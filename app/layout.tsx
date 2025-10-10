@@ -10,7 +10,7 @@ import { WalletProvider } from "@/components/wallet-provider"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
-  title: "Pushbridge",
+  title: "PushSwap",
   description: "P2P Swap for Pushchain",
 }
 
@@ -25,6 +25,9 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="icon" href="/icon.png" type="image/png" />
+      </head>
       <body className="font-sans">
         <ThemeProvider
           attribute="class"
