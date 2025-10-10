@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { GeistMono } from "geist/mono"
 import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -12,6 +12,9 @@ import { Toaster } from "@/components/ui/sonner"
 export const metadata: Metadata = {
   title: "Pushbridge",
   description: "P2P Swap for Pushchain",
+  icons: {
+    icon: "/pushSwapSqBlack.png",
+  },
 }
 
 export default function RootLayout({
