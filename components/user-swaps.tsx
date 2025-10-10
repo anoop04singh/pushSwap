@@ -183,15 +183,17 @@ export function UserSwaps() {
   }, [])
 
   useEffect(() => {
-    if (isInitialized && pushChainClient) {
-      pushChainClient.universal.account.then((address) => {
+    async function init() {
+      if (isInitialized && pushChainClient) {
+        const address = await pushChainClient.universal.account
         if (address) {
           fetchUserSwaps(address)
         }
-      })
-    } else {
-      setIsLoading(false)
+      } else {
+        setIsLoading(false)
+      }
     }
+    init()
   }, [isInitialized, pushChainClient, fetchUserSwaps])
 
   if (!isInitialized) {
