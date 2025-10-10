@@ -10,8 +10,9 @@ import { WalletProvider } from "@/components/wallet-provider"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
-  title: "Pushbridge",
-  description: "P2P Swap for Pushchain",
+  title: "pushSwap",
+  description: "A peer-to-peer atomic swap application for the Pushchain network.",
+  authors: [{ name: "0xanoop" }],
   icons: {
     icon: "/pushSwapSqBlack.png",
   },
