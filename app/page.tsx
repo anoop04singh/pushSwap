@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { DollarSign, Repeat } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function HomePage() {
   return (
@@ -41,15 +42,23 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-        <div>
-          <SwapForm />
-        </div>
-        <div>
-          <UserSwaps />
-        </div>
-        <div>
-          <OpenSwaps />
-        </div>
+
+        <Tabs defaultValue="create" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="create">Create Swap</TabsTrigger>
+            <TabsTrigger value="open">Open Swaps</TabsTrigger>
+            <TabsTrigger value="my-swaps">My Swaps</TabsTrigger>
+          </TabsList>
+          <TabsContent value="create">
+            <SwapForm />
+          </TabsContent>
+          <TabsContent value="open">
+            <OpenSwaps />
+          </TabsContent>
+          <TabsContent value="my-swaps">
+            <UserSwaps />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
