@@ -161,6 +161,24 @@ export function SwapForm() {
     }
   }, [sendAmount, receiveAmount, selectedToken, isInitialized, pushChainClient, PushChain])
 
+  if (!isInitialized) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Swap</CardTitle>
+          <CardDescription>
+            Select the token you want to swap for native PC token.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center text-muted-foreground">
+            Please connect your wallet to create a swap.
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>

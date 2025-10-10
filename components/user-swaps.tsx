@@ -197,7 +197,21 @@ export function UserSwaps() {
   }, [isInitialized, pushChainClient, fetchUserSwaps])
 
   if (!isInitialized) {
-    return null
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Swaps</CardTitle>
+          <CardDescription>
+            Swaps you have created or participated in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center text-muted-foreground">
+            Please connect your wallet to view your swaps.
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
