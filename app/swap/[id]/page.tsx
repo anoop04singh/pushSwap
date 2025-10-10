@@ -61,6 +61,18 @@ const HTLCSWAP_ABI = [{
   "outputs": [],
   "stateMutability": "payable",
   "type": "function"
+}, {
+  "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+  "name": "getUserCreatedSwaps",
+  "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+  "name": "getUserParticipatedSwaps",
+  "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
+  "stateMutability": "view",
+  "type": "function"
 }]
 
 interface SwapDetails {
@@ -100,7 +112,7 @@ export default function SwapDetailsPage() {
     if (!swapId) return
     setIsLoading(true)
     try {
-      const PUSH_RPC_URL = 'https://evm.rpc-testnet-donut-node1.push.org/'
+      const PUSH_RPC_URL = PushUI.CONSTANTS.PUSH_NETWORK.TESTNET.RPC
       const pushProvider = new ethers.JsonRpcProvider(PUSH_RPC_URL)
       const htlcContract = new ethers.Contract(
         HTLCSWAP_CONTRACT_ADDRESS,

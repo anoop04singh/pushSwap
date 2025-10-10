@@ -1,5 +1,6 @@
 import { SwapForm } from "@/components/swap-form"
 import { OpenSwaps } from "@/components/open-swaps"
+import { UserSwaps } from "@/components/user-swaps"
 import {
   Card,
   CardContent,
@@ -42,6 +43,9 @@ export default function HomePage() {
         </div>
         <div>
           <SwapForm />
+        </div>
+        <div>
+          <UserSwaps />
         </div>
         <div>
           <OpenSwaps />

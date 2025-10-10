@@ -62,6 +62,18 @@ const HTLCSWAP_ABI = [{
   }],
   "stateMutability": "view",
   "type": "function"
+}, {
+  "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+  "name": "getUserCreatedSwaps",
+  "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+  "name": "getUserParticipatedSwaps",
+  "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
+  "stateMutability": "view",
+  "type": "function"
 }]
 
 interface SwapDetails {
