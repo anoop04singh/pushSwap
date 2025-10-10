@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const HTLCSWAP_CONTRACT_ADDRESS = "0xd831A64c8539Ca4E0c1654C60c5A25Fa35042Fb4"
+const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
 
 const TOKENS_BY_ADDRESS: Record<string, { symbol: string; decimals: number }> = {
   "0xca0c5e6f002a389e1580f0db7cd06e4549b5f9d3": {
