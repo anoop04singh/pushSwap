@@ -306,12 +306,20 @@ export default function SwapDetailsPage() {
           <div className="flex items-center justify-around gap-4 rounded-lg border p-4 text-center">
             <div>
               <p className="text-muted-foreground text-sm">You Send</p>
-              <p className="text-xl font-bold">{formattedPcAmount} PC</p>
+              <p className="text-xl font-bold">
+                {isOwnSwap
+                  ? `${formattedErcAmount} ${tokenInfo.symbol}`
+                  : `${formattedPcAmount} PC`}
+              </p>
             </div>
             <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
             <div>
               <p className="text-muted-foreground text-sm">You Receive</p>
-              <p className="text-xl font-bold">{formattedErcAmount} {tokenInfo.symbol}</p>
+              <p className="text-xl font-bold">
+                {isOwnSwap
+                  ? `${formattedPcAmount} PC`
+                  : `${formattedErcAmount} ${tokenInfo.symbol}`}
+              </p>
             </div>
           </div>
 

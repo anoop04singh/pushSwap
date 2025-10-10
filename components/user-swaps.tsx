@@ -131,8 +131,16 @@ const SwapTable = ({ swaps, isLoading, handleRefund, isCreatedTab, isRefunding, 
         return (
           <TableRow key={swap.id}>
             <TableCell className="font-mono text-xs">{`${swap.id.slice(0, 6)}...${swap.id.slice(-4)}`}</TableCell>
-            <TableCell>{formattedPcAmount} PC</TableCell>
-            <TableCell>{formattedErcAmount} {tokenInfo.symbol}</TableCell>
+            <TableCell>
+              {isCreatedTab
+                ? `${formattedErcAmount} ${tokenInfo.symbol}`
+                : `${formattedPcAmount} PC`}
+            </TableCell>
+            <TableCell>
+              {isCreatedTab
+                ? `${formattedPcAmount} PC`
+                : `${formattedErcAmount} ${tokenInfo.symbol}`}
+            </TableCell>
             <TableCell><Badge variant="outline">{states[swap.state]}</Badge></TableCell>
             <TableCell>
               {isCreatedTab && isExpired ? (
