@@ -8,7 +8,7 @@ export function ConnectWalletPrompt() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
-        <CardHeader className="items-center space-y-4 p-8 text-center">
+        <CardHeader className="flex flex-col items-center space-y-4 p-8 text-center">
           <Image
             src="/logo.png"
             alt="PushSwap Logo"
@@ -17,7 +17,7 @@ export function ConnectWalletPrompt() {
             className="h-16 w-auto"
             priority
           />
-          <div className="space-y-2">
+          <div className="space-y-2 pt-4">
             <CardTitle className="text-3xl font-bold">Welcome to PushSwap</CardTitle>
             <CardDescription className="text-base">
               The decentralized P2P platform to swap tokens on Pushchain.

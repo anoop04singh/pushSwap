@@ -14,10 +14,10 @@ import { DollarSign, Repeat } from "lucide-react"
 import { ConnectWalletPrompt } from "@/components/connect-wallet-prompt"
 
 export default function HomePage() {
-  const { isInitialized, account } = usePushChainClient()
+  const { account } = usePushChainClient()
 
   // Show a dedicated welcome/connect screen until the wallet is ready
-  if (!isInitialized || !account) {
+  if (!account) {
     return <ConnectWalletPrompt />
   }
 
