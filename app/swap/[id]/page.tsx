@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useParams } from "next/navigation"
-import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
+import { usePushChainClient } from "@pushchain/ui-kit"
 import { ethers } from "ethers"
 import { formatUnits, encodeFunctionData, type Hex } from "viem"
 import { ArrowLeft, ArrowRight, Loader2, Info, Users, Lock, Clock } from "lucide-react"
@@ -73,6 +73,12 @@ const HTLCSWAP_ABI = [{
   "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
   "stateMutability": "view",
   "type": "function"
+}, {
+  "inputs": [{"internalType": "bytes32", "name": "_swapId", "type": "bytes32"}],
+  "name": "refundSwap",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
 }]
 
 interface SwapDetails {
@@ -105,6 +111,7 @@ export default function SwapDetailsPage() {
   const [swapDetails, setSwapDetails] = useState<SwapDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isParticipating, setIsParticipating] = useState(false)
+  const [isRefunding, setIsRefunding] = useState(false)
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState("")
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
@@ -241,12 +248,50 @@ export default function SwapDetailsPage() {
     }
   }
 
+  const handleRefund = async () => {
+    if (!isInitialized || !pushChainClient || !swapDetails) {
+      setModalState({ isOpen: true, status: "error", title: "Error", description: "Wallet not connected." })
+      return
+    }
+    setIsRefunding(true)
+    setModalState({ isOpen: true, status: "loading", title: "Processing Refund", description: "Please confirm the transaction in your wallet." })
+
+    try {
+      const refundTx = await pushChainClient.universal.sendTransaction({
+        to: HTLCSWAP_CONTRACT_ADDRESS,
+        data: encodeFunctionData({
+          abi: HTLCSWAP_ABI,
+          functionName: "refundSwap",
+          args: [swapDetails.id],
+        }),
+      })
+
+      const receipt = await refundTx.wait()
+      setModalState({
+        isOpen: true,
+        status: "success",
+        title: "Refund Successful!",
+        description: "Your funds have been returned to your wallet.",
+        actionLabel: "View on Explorer",
+        onAction: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank"),
+      })
+      fetchSwapDetails()
+    } catch (error: any) {
+      console.error("Refund failed:", error)
+      setModalState({ isOpen: true, status: "error", title: "Refund Failed", description: error.shortMessage || error.message })
+    } finally {
+      setIsRefunding(false)
+    }
+  }
+
   const states = ['NONE', 'OPEN', 'LOCKED', 'COMPLETED', 'REFUNDED']
   const tokenInfo = swapDetails ? TOKENS_BY_ADDRESS[swapDetails.ercToken.toLowerCase()] || { symbol: "UNKNOWN", decimals: 18 } : null
   const formattedErcAmount = swapDetails && tokenInfo ? formatUnits(swapDetails.ercAmount, tokenInfo.decimals) : ""
   const formattedPcAmount = swapDetails ? formatUnits(swapDetails.pcAmount, 18) : ""
   const isOwnSwap = userAddress && swapDetails && userAddress.toLowerCase() === swapDetails.userA.toLowerCase()
   const canParticipate = swapDetails?.state === 1 && !isOwnSwap
+  const isExpired = timeRemaining === "Expired"
+  const canRefund = isOwnSwap && swapDetails?.state === 1 && isExpired
 
   const renderContent = () => {
     if (isLoading) {
@@ -297,9 +342,20 @@ export default function SwapDetailsPage() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button className="w-full" onClick={() => setIsConfirmationOpen(true)} disabled={!canParticipate || isParticipating || !isInitialized}>
-            {isParticipating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isOwnSwap ? "This is your swap" : (swapDetails.state !== 1 ? `Swap is ${states[swapDetails.state]}` : "Participate")}
+          <Button
+            className="w-full"
+            onClick={canRefund ? handleRefund : () => setIsConfirmationOpen(true)}
+            disabled={(!canParticipate && !canRefund) || isParticipating || isRefunding || !isInitialized}
+            variant={canRefund ? "destructive" : "default"}
+          >
+            {(isParticipating || isRefunding) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {canRefund
+              ? "Refund Swap"
+              : isOwnSwap
+              ? "This is your swap"
+              : swapDetails.state !== 1
+              ? `Swap is ${states[swapDetails.state]}`
+              : "Participate"}
           </Button>
         </CardFooter>
       </>
@@ -310,7 +366,7 @@ export default function SwapDetailsPage() {
     <div className="flex justify-center p-4 sm:p-6 lg:p-8">
       <main className="flex w-full max-w-2xl flex-1 flex-col gap-4 md:gap-8">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild><Link href="/"><ArrowLeft className="h-4 w-4" /></Link></Button>
+          <Button variant="outline" size="icon" asChild><Link href="/home"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <h1 className="text-xl font-semibold">Swap Details</h1>
         </div>
         <Card>

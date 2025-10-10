@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { usePushChainClient, PushUI } from "@pushchain/ui-kit"
+import { usePushChainClient } from "@pushchain/ui-kit"
 import { ethers } from "ethers"
-import { formatUnits, type Hex } from "viem"
+import { formatUnits, type Hex, encodeFunctionData } from "viem"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { StatusModal } from "@/components/status-modal"
+import { Loader2 } from "lucide-react"
 
 const HTLCSWAP_CONTRACT_ADDRESS = "0xf20BcDdE8eE2c73dbB69dA423e3c9cA83CDa9C77"
 
@@ -69,6 +71,12 @@ const HTLCSWAP_ABI = [{
   }],
   "stateMutability": "view",
   "type": "function"
+}, {
+  "inputs": [{"internalType": "bytes32", "name": "_swapId", "type": "bytes32"}],
+  "name": "refundSwap",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
 }];
 
 interface SwapDetails {
@@ -77,11 +85,13 @@ interface SwapDetails {
   ercAmount: bigint
   pcAmount: bigint
   state: number
+  userA: Hex
+  timelock: bigint
 }
 
 const states = ['NONE', 'OPEN', 'LOCKED', 'COMPLETED', 'REFUNDED']
 
-const SwapTable = ({ swaps, isLoading }: { swaps: SwapDetails[], isLoading: boolean }) => {
+const SwapTable = ({ swaps, isLoading, handleRefund, isCreatedTab, isRefunding, refundingId }: { swaps: SwapDetails[], isLoading: boolean, handleRefund: (swapId: string) => void, isCreatedTab: boolean, isRefunding: boolean, refundingId: string | null }) => {
   const renderSkeleton = () =>
     Array.from({ length: 2 }).map((_, index) => (
       <TableRow key={index}>
@@ -115,6 +125,8 @@ const SwapTable = ({ swaps, isLoading }: { swaps: SwapDetails[], isLoading: bool
         const tokenInfo = TOKENS_BY_ADDRESS[swap.ercToken.toLowerCase()] || { symbol: "UNKNOWN", decimals: 18 }
         const formattedErcAmount = formatUnits(swap.ercAmount, tokenInfo.decimals)
         const formattedPcAmount = formatUnits(swap.pcAmount, 18)
+        const now = Math.floor(Date.now() / 1000)
+        const isExpired = swap.state === 1 && Number(swap.timelock) < now
 
         return (
           <TableRow key={swap.id}>
@@ -123,9 +135,16 @@ const SwapTable = ({ swaps, isLoading }: { swaps: SwapDetails[], isLoading: bool
             <TableCell>{formattedErcAmount} {tokenInfo.symbol}</TableCell>
             <TableCell><Badge variant="outline">{states[swap.state]}</Badge></TableCell>
             <TableCell>
-              <Button size="sm" asChild>
-                <Link href={`/swap/${swap.id}`}>View</Link>
-              </Button>
+              {isCreatedTab && isExpired ? (
+                <Button size="sm" variant="destructive" onClick={() => handleRefund(swap.id)} disabled={isRefunding && refundingId === swap.id}>
+                  {isRefunding && refundingId === swap.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Refund
+                </Button>
+              ) : (
+                <Button size="sm" asChild>
+                  <Link href={`/swap/${swap.id}`}>View</Link>
+                </Button>
+              )}
             </TableCell>
           </TableRow>
         )
@@ -139,6 +158,22 @@ export function UserSwaps() {
   const [createdSwaps, setCreatedSwaps] = useState<SwapDetails[]>([])
   const [participatedSwaps, setParticipatedSwaps] = useState<SwapDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [userAddress, setUserAddress] = useState<string | null>(null)
+  const [isRefunding, setIsRefunding] = useState(false)
+  const [refundingId, setRefundingId] = useState<string | null>(null)
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean
+    status: "loading" | "success" | "error"
+    title: string
+    description: React.ReactNode
+    onAction?: () => void
+    actionLabel?: string
+  }>({
+    isOpen: false,
+    status: "loading",
+    title: "",
+    description: "",
+  })
 
   const fetchUserSwaps = useCallback(async (userAddress: string) => {
     setIsLoading(true)
@@ -162,6 +197,8 @@ export function UserSwaps() {
             ercAmount: swapData.ercAmount,
             pcAmount: swapData.pcAmount,
             state: Number(swapData.state),
+            userA: swapData.userA,
+            timelock: swapData.timelock,
           }
         })
         return Promise.all(detailsPromises)
@@ -187,6 +224,7 @@ export function UserSwaps() {
       if (isInitialized && pushChainClient) {
         const address = await pushChainClient.universal.account
         if (address) {
+          setUserAddress(address)
           fetchUserSwaps(address)
         }
       } else {
@@ -195,6 +233,46 @@ export function UserSwaps() {
     }
     init()
   }, [isInitialized, pushChainClient, fetchUserSwaps])
+
+  const handleRefund = useCallback(async (swapId: string) => {
+    if (!isInitialized || !pushChainClient) {
+      setModalState({ isOpen: true, status: "error", title: "Error", description: "Wallet not connected." })
+      return
+    }
+    setIsRefunding(true)
+    setRefundingId(swapId)
+    setModalState({ isOpen: true, status: "loading", title: "Processing Refund", description: "Please confirm the transaction in your wallet." })
+
+    try {
+      const refundTx = await pushChainClient.universal.sendTransaction({
+        to: HTLCSWAP_CONTRACT_ADDRESS,
+        data: encodeFunctionData({
+          abi: HTLCSWAP_ABI,
+          functionName: "refundSwap",
+          args: [swapId],
+        }),
+      })
+
+      const receipt = await refundTx.wait()
+      setModalState({
+        isOpen: true,
+        status: "success",
+        title: "Refund Successful!",
+        description: "Your funds have been returned to your wallet.",
+        actionLabel: "View on Explorer",
+        onAction: () => window.open(pushChainClient.explorer.getTransactionUrl(receipt.hash), "_blank"),
+      })
+      if (userAddress) {
+        fetchUserSwaps(userAddress)
+      }
+    } catch (error: any) {
+      console.error("Refund failed:", error)
+      setModalState({ isOpen: true, status: "error", title: "Refund Failed", description: error.shortMessage || error.message })
+    } finally {
+      setIsRefunding(false)
+      setRefundingId(null)
+    }
+  }, [pushChainClient, isInitialized, userAddress, fetchUserSwaps])
 
   if (!isInitialized) {
     return (
@@ -215,47 +293,58 @@ export function UserSwaps() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Your Swaps</CardTitle>
-        <CardDescription>Swaps you have created or participated in.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="created">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="created">Created</TabsTrigger>
-            <TabsTrigger value="participated">Participated</TabsTrigger>
-          </TabsList>
-          <TabsContent value="created" className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>You Send</TableHead>
-                  <TableHead>You Receive</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <SwapTable swaps={createdSwaps} isLoading={isLoading} />
-            </Table>
-          </TabsContent>
-          <TabsContent value="participated" className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>You Send</TableHead>
-                  <TableHead>You Receive</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <SwapTable swaps={participatedSwaps} isLoading={isLoading} />
-            </Table>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Swaps</CardTitle>
+          <CardDescription>Swaps you have created or participated in.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="created">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="created">Created</TabsTrigger>
+              <TabsTrigger value="participated">Participated</TabsTrigger>
+            </TabsList>
+            <TabsContent value="created" className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>You Send</TableHead>
+                    <TableHead>You Receive</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <SwapTable swaps={createdSwaps} isLoading={isLoading} handleRefund={handleRefund} isCreatedTab={true} isRefunding={isRefunding} refundingId={refundingId} />
+              </Table>
+            </TabsContent>
+            <TabsContent value="participated" className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>You Send</TableHead>
+                    <TableHead>You Receive</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <SwapTable swaps={participatedSwaps} isLoading={isLoading} handleRefund={handleRefund} isCreatedTab={false} isRefunding={isRefunding} refundingId={refundingId} />
+              </Table>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+      <StatusModal
+        isOpen={modalState.isOpen}
+        onOpenChange={(open) => setModalState(prev => ({ ...prev, isOpen: open }))}
+        status={modalState.status}
+        title={modalState.title}
+        description={modalState.description}
+        actionLabel={modalState.actionLabel}
+        onAction={modalState.onAction}
+      />
+    </>
   )
 }
