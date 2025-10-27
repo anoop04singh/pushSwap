@@ -20,8 +20,13 @@
     *   [Refunding a Swap](#55-refunding-a-swap)
     *   [Viewing Swaps](#56-viewing-swaps)
 6.  [Future Improvements: Cross-Chain P2P Swaps](#6-future-improvements-cross-chain-p2p-swaps)
-7.  [Contributing](#7-contributing)
-8.  [License](#8-license)
+
+
+---
+
+**Contract:** [0x048B25C19b0AB50ec1F0582853aC90501Dd6D7B1](https://donut.push.network/address/0x048B25C19b0AB50ec1F0582853aC90501Dd6D7B1?tab=contract)
+
+---
 
 ---
 
