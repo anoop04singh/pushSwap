@@ -34,7 +34,38 @@ const TOKENS: Record<string, { address: `0x${string}`; decimals: number }> = {
     address: "0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3",
     decimals: 6,
   },
-  // We can add other tokens like USDC here later
+  pETH: {
+    address: "0x2971824Db68229D087931155C2b8bB820B275809",
+    decimals: 18,
+  },
+  pSOL: {
+    address: "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+    decimals: 18,
+  },
+  "pETH.base": {
+    address: "0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21",
+    decimals: 18,
+  },
+  "USDC.eth": {
+    address: "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+    decimals: 6,
+  },
+  USDC: {
+    address: "0x8afc81487682024368AC225B799C3b325D82BEB4",
+    decimals: 6,
+  },
+  "USDT.arb": {
+    address: "0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9",
+    decimals: 6,
+  },
+  "USDT.sol": {
+    address: "0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34",
+    decimals: 6,
+  },
+  WETH: {
+    address: "0x9e9eE7F2e34a61ADC7b9d40F5Cf02b1841dC8dA9",
+    decimals: 18,
+  },
 }
 
 const IERC20_ABI = [
@@ -209,8 +240,11 @@ export function SwapForm() {
                   <SelectValue placeholder="Token" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USDT">USDT</SelectItem>
-                  {/* <SelectItem value="USDC">USDC</SelectItem> */}
+                  {Object.keys(TOKENS).map((tokenSymbol) => (
+                    <SelectItem key={tokenSymbol} value={tokenSymbol}>
+                      {tokenSymbol}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -36,6 +36,38 @@ const TOKENS_BY_ADDRESS: Record<string, { symbol: string; decimals: number }> = 
     symbol: "USDT",
     decimals: 6,
   },
+  "0x2971824db68229d087931155c2b8bb820b275809": {
+    symbol: "pETH",
+    decimals: 18,
+  },
+  "0x5d525df2bd99a6e7ec58b76af2fd95f39874ebed": {
+    symbol: "pSOL",
+    decimals: 18,
+  },
+  "0xc7007af2b24d4eb963fc9633b0c66e1d2d90fc21": {
+    symbol: "pETH.base",
+    decimals: 18,
+  },
+  "0x387b9c8db60e74999aaac5a2b7825b400f12d68e": {
+    symbol: "USDC.eth",
+    decimals: 6,
+  },
+  "0x8afc81487682024368ac225b799c3b325d82beb4": {
+    symbol: "USDC",
+    decimals: 6,
+  },
+  "0x76ad08339df606beede06f90e3faf82c5b2fb2e9": {
+    symbol: "USDT.arb",
+    decimals: 6,
+  },
+  "0x4f1a3d22d170a2f4bddb37845a962322e24f4e34": {
+    symbol: "USDT.sol",
+    decimals: 6,
+  },
+  "0x9e9ee7f2e34a61adc7b9d40f5cf02b1841dc8da9": {
+    symbol: "WETH",
+    decimals: 18,
+  },
 }
 
 const HTLCSWAP_ABI = [{
