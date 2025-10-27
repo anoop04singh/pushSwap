@@ -28,8 +28,6 @@
 
 ---
 
----
-
 ## 1. Project Overview
 
 pushSwap is a decentralized application (dApp) built on the Pushchain network, designed to facilitate secure and trustless peer-to-peer (P2P) atomic swaps. It enables users to exchange ERC-20 compatible tokens for native PC tokens directly, leveraging Hash Time-Locked Contracts (HTLCs). This mechanism ensures that either both parties receive their intended assets or neither does, effectively eliminating counterparty risk and the need for centralized intermediaries.
