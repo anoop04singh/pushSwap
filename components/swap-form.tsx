@@ -106,6 +106,7 @@ export function SwapForm() {
   const [receiveAmount, setReceiveAmount] = useState("")
   const [selectedToken, setSelectedToken] = useState("USDT")
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState({ sendAmount: "", receiveAmount: "" })
   const [modalState, setModalState] = useState<{
     isOpen: boolean
     status: "loading" | "success" | "error"
@@ -125,8 +126,23 @@ export function SwapForm() {
       setModalState({ isOpen: true, status: "error", title: "Error", description: "Wallet not connected or client not initialized." })
       return
     }
-    if (!sendAmount || !receiveAmount || parseFloat(sendAmount) <= 0 || parseFloat(receiveAmount) <= 0) {
-      setModalState({ isOpen: true, status: "error", title: "Invalid Input", description: "Please enter valid amounts for the swap." })
+
+    const newErrors = { sendAmount: "", receiveAmount: "" }
+    let hasError = false
+
+    if (!sendAmount || parseFloat(sendAmount) <= 0) {
+      newErrors.sendAmount = "Amount must be greater than 0."
+      hasError = true
+    }
+
+    if (!receiveAmount || parseFloat(receiveAmount) <= 0) {
+      newErrors.receiveAmount = "Amount must be greater than 0."
+      hasError = true
+    }
+
+    setErrors(newErrors)
+
+    if (hasError) {
       return
     }
 
@@ -228,8 +244,14 @@ export function SwapForm() {
                 type="number"
                 placeholder="0.0"
                 value={sendAmount}
-                onChange={(e) => setSendAmount(e.target.value)}
+                onChange={(e) => {
+                  setSendAmount(e.target.value)
+                  if (errors.sendAmount) {
+                    setErrors(prev => ({ ...prev, sendAmount: "" }))
+                  }
+                }}
                 disabled={isLoading}
+                min="0"
               />
               <Select
                 defaultValue={selectedToken}
@@ -248,6 +270,7 @@ export function SwapForm() {
                 </SelectContent>
               </Select>
             </div>
+            {errors.sendAmount && <p className="text-sm text-destructive mt-1">{errors.sendAmount}</p>}
           </div>
           <div className="relative flex justify-center">
             <div className="absolute inset-0 flex items-center">
@@ -267,13 +290,20 @@ export function SwapForm() {
                 type="number"
                 placeholder="0.0"
                 value={receiveAmount}
-                onChange={(e) => setReceiveAmount(e.target.value)}
+                onChange={(e) => {
+                  setReceiveAmount(e.target.value)
+                  if (errors.receiveAmount) {
+                    setErrors(prev => ({ ...prev, receiveAmount: "" }))
+                  }
+                }}
                 disabled={isLoading}
+                min="0"
               />
               <Button variant="outline" className="w-[120px]" disabled>
                 PC
               </Button>
             </div>
+            {errors.receiveAmount && <p className="text-sm text-destructive mt-1">{errors.receiveAmount}</p>}
           </div>
         </CardContent>
         <CardFooter>
